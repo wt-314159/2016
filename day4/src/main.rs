@@ -12,7 +12,6 @@ fn main() {
     println!("Input length: {}", input.len());
 
     let mut sector_sum = 0;
-    let mut valid_rooms = 0;
     let mut possible_answers = Vec::new();
     for line in input.split("\n") {
         let checksum_start = line.chars().enumerate().find(|x| x.1 == '[').unwrap();
@@ -25,7 +24,7 @@ fn main() {
             if c == '-' {
                 continue;
             }
-            if let Some((index, c_count)) = char_counts.iter().enumerate().find(|x| x.1.0 == c) {
+            if let Some((index, _)) = char_counts.iter().enumerate().find(|x| x.1.0 == c) {
                 char_counts[index].1 += 1;
             }
             else {
@@ -42,7 +41,6 @@ fn main() {
             }
         }
         if checks_match {
-            valid_rooms += 1;
             let sector_num = sector.parse::<usize>().unwrap();
             sector_sum += sector_num;
             let room_name = decrypt_name(&line[0..sector_start], sector_num);

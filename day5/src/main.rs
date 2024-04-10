@@ -15,7 +15,7 @@ fn main() {
     //let hasher = Md5::new();
     let mut password = ['_'; 8];
     print_curr_password(password);
-    for i in 0..8 {
+    for _ in 0..8 {
         loop {
             let mut hasher = Md5::new();
             hasher.update(hash_input.as_bytes());
@@ -26,6 +26,7 @@ fn main() {
 
             if hex.starts_with("00000") {
                 let index_char = hex.chars().nth(5).unwrap();
+                #[allow(unused_assignments)]
                 let mut pass_char = '_';
                 if let Some(index) = index_char.to_digit(8) {
                     let index = index as usize;

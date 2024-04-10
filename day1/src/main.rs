@@ -23,15 +23,12 @@ fn main() {
 
     let mut north: i32 = 0;
     let mut east: i32 = 0;
-    let mut max_north = 0;
-    let mut min_north = 0;
-    let mut max_east = 0;
-    let mut min_east = 0;
     let mut facing = 0;
     // N: 0, E: 1, S: 2, W: 3
     let mut locations: Vec<(i32, i32)> = Vec::new();
     locations.push((0,0));
     for dir in directions {
+        #[allow(unused_assignments)]
         let mut amount = 0;
         match dir {
             Direction::Left(some) => {

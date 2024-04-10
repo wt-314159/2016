@@ -44,6 +44,7 @@ fn main() {
     }
 }
 
+#[allow(dead_code)]
 fn get_num_from_row_and_col(row: usize, col: usize) -> usize {
     1 + row * 3 + col
 }
