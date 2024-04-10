@@ -1,6 +1,6 @@
 #[allow(unused_imports)]
 use std::{fs, collections::HashMap, cmp::min, cmp::max};
-use fancy_regex::Regex;
+//use fancy_regex::Regex;
 // use regex::Regex;
 
 fn main() {
