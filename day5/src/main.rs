@@ -9,9 +9,12 @@ fn main() {
     //let input = String::from("abc");
     let mut index = 0;
     let mut hash_input = input.clone() + &index.to_string();
+
+    println!("Cracking password from input: '{}'", input);
     
     //let hasher = Md5::new();
     let mut password = ['_'; 8];
+    print_curr_password(password);
     for i in 0..8 {
         loop {
             let mut hasher = Md5::new();
@@ -29,12 +32,10 @@ fn main() {
                     if password[index] == '_' {
                         pass_char = hex.chars().nth(6).unwrap();
                         password[index] = pass_char;
-                        println!("Password character at position {} is {}", i, pass_char);
+                        print_curr_password(password);
                         break;
                     }
-                    println!("Index {} already filled", index);
                 }
-                println!("Invalid digit: {}", index_char);
             }
 
         }
@@ -42,4 +43,14 @@ fn main() {
 
     let password: String = password.iter().collect();
     println!("Password: {}", password);
+}
+
+fn print_curr_password(password: [char; 8]) {
+    print!("\r");
+    for c in password {
+        print!("{}", c);
+    }
+    let completion = password.iter().filter(|x| x != &&'_').count();
+    print!(" - cracked {} out of {} characters...", completion, password.len());
+    println!();
 }
