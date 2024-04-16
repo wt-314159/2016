@@ -1,5 +1,6 @@
 #[allow(unused_imports)]
-use std::{fs, collections::HashMap, cmp::min, cmp::max};
+use std::{cmp::{max, min, Reverse}, collections::HashMap, fs, hash::Hash};
+use priority_queue::PriorityQueue;
 // use fancy_regex::Regex;
 // use regex::Regex;
 
@@ -52,8 +53,25 @@ fn estimate_cost(building: &Building) -> usize {
     building.floors[2].items.len()
 }
 
-fn a_star_search(start_state: &Building) -> usize {
-    let queue = PriorityQueue::new();
+fn a_star_search(start_state: Building) -> usize {
+    let mut queue: PriorityQueue<Building, usize> = PriorityQueue::new();
+    let cost = estimate_cost(&start_state);
+    queue.push(start_state, cost);
+
+    while queue.len() > 0 {
+        let (building, steps) = queue.pop().unwrap();
+        // if we've reached goal, return number of steps it took to get there
+        if building.is_goal() {
+            return steps;
+        }
+
+        // find all neighbours and calculate cost
+        let next_floors = get_next_floors(building.elevator);
+        let num_objects = building.floors[building.elevator].items.len();
+        for nx_flr in next_floors {
+            
+        }
+    }
     0
 }
 
@@ -248,19 +266,49 @@ impl Building {
         let h = estimate_cost(self);
         self.steps + h
     }
+
+    fn is_goal(&self) -> bool {
+        // all items on 4th floor
+        self.floors[3].items.len() == 10 && 
+        // no items on any other floors (should be case )
+        //self.floors.iter().take(3).all(|x| x.items.len() == 0) &&     // shouldn't need to check this
+        self.elevator == 3  
+    }
 }
 
+impl PartialEq for Building {
+    fn eq(&self, other: &Self) -> bool {
+        self.floors == other.floors && self.elevator == other.elevator
+    }
+}
+
+impl Eq for Building {}
+
+impl Hash for Building {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.floors.hash(state);
+        self.elevator.hash(state);
+    }
+}
+
+#[derive(PartialEq, Eq, Hash)]
 struct Floor {
     items: Vec<Object>
 }
 
-#[derive(PartialEq, Debug)]
+impl Floor {
+    fn empty_floor() -> Floor {
+        Floor { items: Vec::new() }
+    }
+}
+
+#[derive(PartialEq, Eq, Hash, Debug)]
 enum Object {
     Chip(Element),
     Generator(Element)
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug)]
 enum Element {
     Thulium,
     Plutonium,
