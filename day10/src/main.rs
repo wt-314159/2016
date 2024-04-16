@@ -16,7 +16,6 @@ fn main() {
         if params.len() == 6 {
             let bot_id = params[5].parse::<usize>().unwrap();
             let chip = params[1].parse::<usize>().unwrap();
-            let entry = bots.entry(bot_id).or_insert(Rc::new(RefCell::new(Bot::new(bot_id))));
             let bot = bots.get(&bot_id).unwrap();
             let cloned = Rc::clone(bot);
             let mut borrowed = (*cloned).borrow_mut();
@@ -126,28 +125,12 @@ struct Bot {
 }
 
 struct Output {
+    #[allow(dead_code)]
     id: usize,
     chip: Option<usize>
 }
 
 impl Bot {
-    fn get_chip(&self, low: bool) -> usize {
-        if let (Some(one), Some(two)) = (self.chip_1, self.chip_2) {
-            let min = min(one, two);
-            let max = max(one, two);
-            if min == 17 && max == 61 {
-                println!("Bot ID: {}", self.id);
-            }
-            match low {
-                true => min,
-                false => max
-            }
-        }
-        else {
-            panic!("One of chips was None");
-        }
-    }
-
     fn new(id: usize) -> Bot {
         Bot { id, chip_1: None, chip_2: None, give_low_bot: None, give_high_bot: None, low_output: None, high_output: None }
     }

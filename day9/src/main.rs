@@ -46,7 +46,6 @@ fn get_version2_length(input: &str) -> usize {
         else {
             let remaining = input.len() - index;
             length_counter += remaining;
-            index += remaining;
             break;
         }
     }
@@ -54,6 +53,7 @@ fn get_version2_length(input: &str) -> usize {
     length_counter
 }
 
+#[allow(dead_code)]
 fn get_decompressed_length(input: &str) -> usize {
     let mut index = 0;
     let mut decompressed: Vec<&str> = Vec::new();
