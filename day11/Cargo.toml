@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 priority-queue = "2.0.2"
+termion = "3.0.0"
 # fancy-regex = "0.13.0"
 # regex = "1.10.4"

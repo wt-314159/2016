@@ -1,6 +1,7 @@
 #[allow(unused_imports)]
-use std::{cmp::{max, min, Reverse}, collections::HashMap, fs, hash::Hash};
+use std::{cmp::{max, min, Reverse}, collections::HashMap, fs, hash::Hash, io::{stdout, Write}};
 use priority_queue::PriorityQueue;
+use termion::{cursor, raw::IntoRawMode};
 // use fancy_regex::Regex;
 // use regex::Regex;
 
@@ -40,6 +41,13 @@ fn main() {
     print_building(&building);
 
     println!("Estimated cost of current state is {}", estimate_cost(&building));
+
+    if let Some(min_steps) = a_star_search(building) {
+        println!("Solution found requiring {} steps", min_steps);
+    }
+    else {
+        println!("No solution found!");
+    }
 }
 
 fn estimate_cost(building: &Building) -> usize {
@@ -48,96 +56,108 @@ fn estimate_cost(building: &Building) -> usize {
     // will be an underestimate, as moving items isn't as simple as that, but should be
     // good enough as a heuristic, main thing is it doesn't overestimate cost, so we
     // know the path found will be the shortest one
-    building.floors[0].items.len() * 3 +
+
+    // N.B. REALLY IMPORTANT -> the choice of this heuristic massively affects A* search efficiency!
+    // At first, I just used the number of items on each floor, multiplied by how many floors away from
+    // floor 4 that floor was. However this is a big underestimate of the number of steps required to
+    // get to the finished state, and since the estimated total cost of a state is the number of steps 
+    // taken to get to that state plus the estimated number of steps to get to the goal, by vastly
+    // underestimating the remaining steps, the A* algorithm was prioritising states where the fewest
+    // steps had been taken over states where more steps had been taken and were closer to the goal, but
+    // not by much. In other words, the A* algorithm assumed earlier states were a better candidate than
+    // later states, since we were underestimating the amount of steps required to get to later states,
+    // and so later states didn't look appealing, as they had more steps taken than we thought they should.
+    // Because of this, we were essentially checking every single state on the way, as any state that progressed
+    // too far would get deprioritised over earlier states, and this was taking far far too long.
+    // The fix was simply to multiply this whole estimated cost by 3, and so weight the remaining number of steps
+    // more heavily, so later nodes were prioritised over earlier ones, as their estimated cost was more accurate
+    (building.floors[0].items.len() * 3 +
     building.floors[1].items.len() * 2 +
-    building.floors[2].items.len()
+    building.floors[2].items.len()) * 3
 }
 
-fn a_star_search(start_state: Building) -> usize {
-    let mut queue: PriorityQueue<Building, usize> = PriorityQueue::new();
+fn a_star_search(start_state: Building) -> Option<usize> {
+    let mut queue: PriorityQueue<Building, Reverse<usize>> = PriorityQueue::new();
+    let mut mapped: HashMap<Building, usize> = HashMap::new();
     let cost = estimate_cost(&start_state);
-    queue.push(start_state, cost);
+    queue.push(start_state, Reverse(cost));
+    let mut stdout = stdout().into_raw_mode().unwrap();
+
+    println!("Step depth: ");
+    println!("");
 
     while queue.len() > 0 {
-        let (building, steps) = queue.pop().unwrap();
+        let (building, cost) = queue.pop().unwrap();
         // if we've reached goal, return number of steps it took to get there
         if building.is_goal() {
-            return steps;
+            return Some(building.steps);
         }
+        writeln!(stdout, "{}{}", cursor::Goto(1, 9), building.steps).expect("Write error!");
 
         // find all neighbours and calculate cost
         let next_floors = get_next_floors(building.elevator);
         let num_objects = building.floors[building.elevator].items.len();
-        for nx_flr in next_floors {
-            
-        }
-    }
-    0
-}
-
-fn find_minimum_steps(floors: &mut Vec<Vec<Object>>, elevator_floor: usize, mut current_steps: usize, mut minimum_steps: usize) -> usize {
-    // Even if the next step solves the puzzle, it won't beat our best attempt so far,
-    // so no point continuing, just return the current minimum
-    if current_steps >= minimum_steps - 1 {
-        return minimum_steps;
-    }
-    let next_floors = get_next_floors(elevator_floor);
-    for nxt_flr in next_floors {
-        // Need to choose either 1 or 2 objects from current floor, and take them to next floor
-        // then check if the state is valid. If not, undo what we just did and continue to try
-        // other options. If the option was valid, then check if we have completed, and if not
-        // recursively call find_minimum_steps, setting result equal to minimum_steps
-        // Finally, undo the option, so when we try another option, we start from same position
-        let num_objects = floors[elevator_floor].len();
-        for i in 0..num_objects {
-            // try taking just this object 
-            take_elevator(floors, elevator_floor, nxt_flr, i, None);
-            current_steps += 1;
-            // Check if we solved puzzle
-            if is_puzzle_solved(floors) {
-                // undo the action, so we can keep searching for potentially better solutions
-                // N.B. don't have to reduce current steps, as it should be copied to recursive calls,
-                // and not affect higher levels of the call stack
-                // N.B. object moved will be last object on next floor
-                take_elevator(floors, nxt_flr, elevator_floor, floors[nxt_flr].len() - 1, None);
-                println!("Solution found taking {} steps", current_steps);
-                // return here, no matter what alternate steps we could take at this level of recursion,
-                // even if they also solved the puzzle (don't think that's even possible?) they wouldn't 
-                // be any quicker anyway, still take same num of steps
-                return min(minimum_steps, current_steps);
-            }
-            // Check if state is valid
-            if is_state_valid(floors) {
-                minimum_steps = find_minimum_steps(floors, nxt_flr, current_steps, minimum_steps);
-            }
-            // undo the action
-            current_steps -= 1;
-            take_elevator(floors, nxt_flr, elevator_floor, floors[nxt_flr].len() - 1, None);
-
-            // try with 2 objects if possible
-            for j in i + 1..num_objects {
-                take_elevator(floors, elevator_floor, nxt_flr, i, Some(j));
-                current_steps += 1;
-                if is_puzzle_solved(floors) {
-                    // undo action
-                    take_elevator(floors, nxt_flr, elevator_floor, i, Some(j));
-                    println!("Solution found taking {} steps", current_steps);
-                    return min(minimum_steps, current_steps);
+        let neighbour_steps = building.steps + 1;
+        for nxt_flr in next_floors {
+            for i in 0..num_objects {
+                // Create a new state by moving 1 object to next floor
+                let new_state = create_state(&building, building.elevator, nxt_flr, i, None);
+                if new_state.is_valid() { 
+                    let est_cost = estimate_cost(&new_state);
+                    // if state is already in queue, check if our new path to it is faster, and update it if so
+                    if let Some(queue_steps) = queue.get_priority(&new_state) {
+                        if neighbour_steps + est_cost < queue_steps.0 {
+                            queue.change_priority(&new_state, Reverse(neighbour_steps + est_cost));
+                        }
+                    }
+                    // Only add new state to queue if it's not been fully mapped yet
+                    else if !mapped.contains_key(&new_state) {
+                        queue.push(new_state, Reverse(neighbour_steps + est_cost));
+                    }
                 }
 
-                if is_state_valid(floors) {
-                    minimum_steps = find_minimum_steps(floors, nxt_flr, current_steps, minimum_steps);
+                for j in i + 1..num_objects {
+                    let new_state = create_state(&building, building.elevator, nxt_flr, i, Some(j));
+                    if !new_state.is_valid() { continue; }
+    
+                    let est_cost = estimate_cost(&new_state);
+                    if let Some(queue_steps) = queue.get_priority(&new_state) {
+                        if neighbour_steps + est_cost < queue_steps.0 {
+                            queue.change_priority(&new_state, Reverse(neighbour_steps + est_cost));
+                        }
+                    }
+                    else if !mapped.contains_key(&new_state) {
+                        queue.push(new_state, Reverse(neighbour_steps + est_cost));
+                    }
                 }
-                current_steps -= 1;
-                take_elevator(floors, nxt_flr, elevator_floor, floors[nxt_flr].len() - 2, Some(floors[nxt_flr].len() - 1));
             }
         }
+        // insert state into a hashmap of fully mapped nodes
+        if mapped.contains_key(&building) {
+            println!("Mapped same building twice!!");
+            return Some(0);
+        }
+        mapped.insert(building, cost.0);
+        //writeln!(stdout, "{}{}", cursor::Goto(1, 11), mapped.len()).expect("Error writing!");
     }
-    minimum_steps
+    // No more nodes to check, puzzle isn't solved
+    None
 }
 
-fn is_puzzle_solved(floors: &Vec<Vec<Object>>) -> bool {
-    floors[3].len() == 11 && floors.iter().take(3).all(|x| x.len() == 0)
+fn create_state(building: &Building, start_floor: usize, dest_floor: usize, first_item_index: usize, second_item_index: Option<usize>) -> Building {
+    let mut new_state = building.clone();
+
+    if let Some(index) = second_item_index {
+        let item = new_state.floors[start_floor].items.remove(index);
+        new_state.floors[dest_floor].items.push(item);
+    }
+    let item = new_state.floors[start_floor].items.remove(first_item_index);
+    new_state.floors[dest_floor].items.push(item);
+    // Remember to move the elevator!
+    new_state.elevator = dest_floor;
+    // and update num steps
+    new_state.steps += 1;
+    new_state
 }
 
 fn get_next_floors(elevator_floor: usize) -> Vec<usize> {
@@ -148,32 +168,6 @@ fn get_next_floors(elevator_floor: usize) -> Vec<usize> {
         3 => vec![2],
         _ => panic!("Elevator cannot be on F{}", elevator_floor + 1)
     }
-}
-
-fn take_elevator(floors: &mut Vec<Vec<Object>>, start_floor: usize, end_floor: usize, first_item_index: usize, second_item_index: Option<usize>) {
-    let floor_diff = max(start_floor, end_floor) - min(start_floor, end_floor);
-    if floor_diff != 1 {
-        panic!("Can't go from F{} to F{}", start_floor + 1, end_floor + 1);
-    }
-
-    // remove second item first, second index should always be greater than first
-    if let Some(index) = second_item_index {
-        let item = floors[start_floor].remove(index);
-            floors[end_floor].push(item);
-    }
-    let item = floors[start_floor].remove(first_item_index);
-    floors[end_floor].push(item);
-}
-
-fn is_state_valid(floors: &Vec<Vec<Object>>) -> bool {
-    for floor in floors {
-        let unshielded_chips = chips_without_gens(floor);
-        if unshielded_chips.len() != 0 && floor_has_any_gens(floor) {
-            // if there are any generators on this floor, we'll fry the unshielded chips
-            return false;
-        }
-    }
-    true
 }
 
 fn chips_without_gens(floor: &Vec<Object>) -> Vec<&Object> {
@@ -188,25 +182,6 @@ fn chips_without_gens(floor: &Vec<Object>) -> Vec<&Object> {
 
 fn floor_has_any_gens(floor: &Vec<Object>) -> bool {
     floor.iter().any(|x| if let Object::Generator(_) = x { true } else {false })
-}
-
-
-fn print_floors(floors: &Vec<Vec<Object>>) {
-    for i in (0..4).rev() {
-        let floor = &floors[i];
-        println!("F {} {} {} {} {} {} {} {} {} {} {}", 
-        i + 1,
-        get_obj_str_or_empty(floor, Object::Chip(Element::Thulium)),
-        get_obj_str_or_empty(floor, Object::Generator(Element::Thulium)),
-        get_obj_str_or_empty(floor, Object::Chip(Element::Plutonium)),
-        get_obj_str_or_empty(floor, Object::Generator(Element::Plutonium)),
-        get_obj_str_or_empty(floor, Object::Chip(Element::Strontium)),
-        get_obj_str_or_empty(floor, Object::Generator(Element::Strontium)),
-        get_obj_str_or_empty(floor, Object::Chip(Element::Promethium)),
-        get_obj_str_or_empty(floor, Object::Generator(Element::Promethium)),
-        get_obj_str_or_empty(floor, Object::Chip(Element::Ruthenium)),
-        get_obj_str_or_empty(floor, Object::Generator(Element::Ruthenium)));
-    }
 }
 
 fn print_building(building: &Building) {
@@ -255,6 +230,7 @@ fn get_obj_str_or_empty(floor: &Vec<Object>, object: Object) -> String {
     String::from(".  ")
 }
 
+#[derive(Clone)]
 struct Building {
     floors: Vec<Floor>,
     elevator: usize,
@@ -274,6 +250,17 @@ impl Building {
         //self.floors.iter().take(3).all(|x| x.items.len() == 0) &&     // shouldn't need to check this
         self.elevator == 3  
     }
+
+    fn is_valid(&self) -> bool {
+        for floor in &self.floors {
+            let unshielded_chips = chips_without_gens(&floor.items);
+            if unshielded_chips.len() != 0 && floor_has_any_gens(&floor.items) {
+                // if there are any generators on this floor, we'll fry the unshielded chips
+                return false;
+            }
+        }
+        true
+    }
 }
 
 impl PartialEq for Building {
@@ -291,7 +278,7 @@ impl Hash for Building {
     }
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 struct Floor {
     items: Vec<Object>
 }
@@ -302,13 +289,13 @@ impl Floor {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 enum Object {
     Chip(Element),
     Generator(Element)
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 enum Element {
     Thulium,
     Plutonium,
