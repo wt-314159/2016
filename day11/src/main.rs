@@ -14,7 +14,6 @@ fn main() {
     let mut floor_one: Vec<Object> = Vec::new();
     let mut floor_two: Vec<Object> = Vec::new();
     let mut floor_three: Vec<Object> = Vec::new();
-    let mut floor_four: Vec<Object> = Vec::new();
     //let mut floors = vec![floor_one, floor_two, floor_three, floor_four];
 
     // manually entering, just quicker to type it out than to 
@@ -30,13 +29,19 @@ fn main() {
     floor_three.push(Object::Chip(Element::Promethium));
     floor_three.push(Object::Generator(Element::Ruthenium));
     floor_three.push(Object::Chip(Element::Ruthenium));
+    // Part 2 --------------
+    floor_one.push(Object::Generator(Element::Elerium));
+    floor_one.push(Object::Chip(Element::Elerium));
+    floor_one.push(Object::Generator(Element::Dilithium));
+    floor_one.push(Object::Chip(Element::Dilithium));
+    // ---------------------
 
     let floor_one = Floor { items: floor_one };
     let floor_two = Floor { items: floor_two };
     let floor_three = Floor { items: floor_three };
-    let floor_four = Floor { items: floor_four };
+    let floor_four = Floor { items: Vec::new() };
 
-    let mut building = Building { floors: vec![floor_one, floor_two, floor_three, floor_four], elevator: 0, steps: 0 };
+    let building = Building { floors: vec![floor_one, floor_two, floor_three, floor_four], elevator: 0, steps: 0 };
 
     print_building(&building);
 
@@ -187,7 +192,7 @@ fn floor_has_any_gens(floor: &Vec<Object>) -> bool {
 fn print_building(building: &Building) {
     for i in (0..building.floors.len()).rev() {
         let floor = &building.floors[i];
-        println!("F{} {} {} {} {} {} {} {} {} {} {} {}",
+        println!("F{} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}",
         i + 1,
         elevator_on_floor(building.elevator, i),
         get_obj_str_or_empty(&floor.items, Object::Chip(Element::Thulium)),
@@ -199,7 +204,12 @@ fn print_building(building: &Building) {
         get_obj_str_or_empty(&floor.items, Object::Chip(Element::Promethium)),
         get_obj_str_or_empty(&floor.items, Object::Generator(Element::Promethium)),
         get_obj_str_or_empty(&floor.items, Object::Chip(Element::Ruthenium)),
-        get_obj_str_or_empty(&floor.items, Object::Generator(Element::Ruthenium)));
+        get_obj_str_or_empty(&floor.items, Object::Generator(Element::Ruthenium)),
+        // Part 2
+        get_obj_str_or_empty(&floor.items, Object::Chip(Element::Elerium)), 
+        get_obj_str_or_empty(&floor.items, Object::Generator(Element::Elerium)),
+        get_obj_str_or_empty(&floor.items, Object::Chip(Element::Dilithium)),
+        get_obj_str_or_empty(&floor.items, Object::Generator(Element::Dilithium)));
     }
 }
 
@@ -220,11 +230,18 @@ fn get_obj_str_or_empty(floor: &Vec<Object>, object: Object) -> String {
             Object::Chip(Element::Strontium) => String::from("StM"),
             Object::Chip(Element::Promethium) => String::from("PrM"),
             Object::Chip(Element::Ruthenium) => String::from("RuM"),
+            // Part 2 ------------
+            Object::Chip(Element::Elerium) => String::from("ElM"),
+            Object::Chip(Element::Dilithium) => String::from("DlM"), 
+            // -------------------
             Object::Generator(Element::Thulium) => String::from("ThG"),
             Object::Generator(Element::Plutonium) => String::from("PlG"),
             Object::Generator(Element::Strontium) => String::from("StG"),
             Object::Generator(Element::Promethium) => String::from("PrG"),
-            Object::Generator(Element::Ruthenium) => String::from("RuG")
+            Object::Generator(Element::Ruthenium) => String::from("RuG"),
+            // Part 2
+            Object::Generator(Element::Elerium) => String::from("ElG"),
+            Object::Generator(Element::Dilithium) => String::from("DlG"),
         }
     } 
     String::from(".  ")
@@ -238,14 +255,10 @@ struct Building {
 }
 
 impl Building {
-    fn estimate_total_cost(&self) -> usize {
-        let h = estimate_cost(self);
-        self.steps + h
-    }
-
     fn is_goal(&self) -> bool {
         // all items on 4th floor
-        self.floors[3].items.len() == 10 && 
+        // Part 2, for Part 1, use 10
+        self.floors[3].items.len() == 14 && 
         // no items on any other floors (should be case )
         //self.floors.iter().take(3).all(|x| x.items.len() == 0) &&     // shouldn't need to check this
         self.elevator == 3  
@@ -283,12 +296,6 @@ struct Floor {
     items: Vec<Object>
 }
 
-impl Floor {
-    fn empty_floor() -> Floor {
-        Floor { items: Vec::new() }
-    }
-}
-
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
 enum Object {
     Chip(Element),
@@ -301,5 +308,8 @@ enum Element {
     Plutonium,
     Strontium,
     Promethium,
-    Ruthenium
+    Ruthenium,
+    // Part 2
+    Elerium,
+    Dilithium
 }
