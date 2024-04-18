@@ -1,69 +1,103 @@
 use std::mem;
 #[allow(unused_imports)]
-use std::{fs, collections::HashMap, cmp::min, cmp::max, mem::size_of, time::Instant};
+use std::{fs, collections::HashMap, cmp::{min, max, Reverse}, mem::size_of, time::Instant, hash::Hash};
+use priority_queue::PriorityQueue;
 // use fancy_regex::Regex;
 // use regex::Regex;
 
 const PUZZLE_INPUT: usize = 1362;
+const GOAL: (usize, usize) = (31, 39);
+// Test Input
+// const PUZZLE_INPUT: usize = 10;
+// const GOAL: (usize, usize) = (7, 4);
 const USIZE_SIZE: usize = mem::size_of::<usize>() * 8;
 
 fn main() {
-    println!("usize size: {}", USIZE_SIZE);
-    let now = Instant::now();
-    let mut bit_count1 = 0;
-    for _ in 0..100 {
-        bit_count1 += count_bits(usize::MAX);
+    let start = Square { x: 1, y: 1, steps: 0 };
+    if let Some(num_steps) = a_star_search(start) {
+        println!("Solution found, {} steps", num_steps);
     }
-    let elapsed1 = now.elapsed();
-
-    let now2 = Instant::now();
-    let mut bit_count2 = 0;
-    for _ in 0..100 {
-        bit_count2 +=count_bits_2(usize::MAX);
+    else {
+        println!("No solution found!");
     }
-    let elapsed2 = now2.elapsed();
+}
 
-    let now3 = Instant::now();
-    let mut bit_count3 = 0; 
-    for _ in 0..100 {
-        bit_count3 +=  count_bits_3(usize::MAX);
+
+
+fn a_star_search(start: Square) -> Option<usize> {
+    let mut queue: PriorityQueue<Square, Reverse<usize>> = PriorityQueue::new();
+    let mut mapped: HashMap<Square, usize> = HashMap::new();
+    let start_cost = estimate_cost(&start);
+    queue.push(start, Reverse(start_cost));
+
+    while queue.len() > 0 {
+        let (square, cost) = queue.pop().unwrap();
+        if square.is_goal() {
+            return Some(square.steps);
+        }
+
+        let neighbour_steps = square.steps + 1;
+        if !is_wall(square.x, square.y + 1) {
+            let new_square = Square { x: square.x, y: square.y + 1, steps: neighbour_steps };
+            update_queue(&mapped, &mut queue, new_square, neighbour_steps);
+        }
+        if !is_wall(square.x + 1, square.y) {
+            let new_square = Square { x: square.x + 1, y: square.y, steps: neighbour_steps };
+            update_queue(&mapped, &mut queue, new_square, neighbour_steps);
+        }
+        if square.y > 0 && !is_wall(square.x, square.y - 1) {
+            let new_square = Square { x: square.x, y: square.y - 1, steps: neighbour_steps };
+            update_queue(&mapped, &mut queue, new_square, neighbour_steps);
+        }
+        if square.x > 0 && !is_wall(square.x - 1, square.y) {
+            let new_square = Square { x: square.x - 1, y: square.y, steps: neighbour_steps };
+            update_queue(&mapped, &mut queue, new_square, neighbour_steps);
+        }
+        mapped.insert(square, cost.0);
     }
-    let elapsed3 = now3.elapsed();
+    None
+}
 
-    println!("Bit count 1: {} in {:#2?}", bit_count1, elapsed1);
-    println!("Bit count 2: {} in {:#2?}", bit_count2, elapsed2);
-    println!("BIt count 3: {} in {:#2?}", bit_count3, elapsed3);
+fn update_queue(mapped: &HashMap<Square, usize>, queue: &mut PriorityQueue<Square, Reverse<usize>>, new_square: Square, steps: usize) {
+    let est_cost = estimate_cost(&new_square);
+
+    if let Some(queue_steps) = queue.get_priority(&new_square) {
+        if steps + est_cost < queue_steps.0 {
+            queue.change_priority(&new_square, Reverse(steps + est_cost));
+        }
+    }
+    else if !mapped.contains_key(&new_square) {
+        queue.push(new_square, Reverse(steps + est_cost));
+    }
+}
+
+fn estimate_cost(square: &Square) -> usize {
+    let x_diff = max(GOAL.0, square.x) - min(GOAL.0, square.x);
+    let y_diff = max(GOAL.1, square.y) - min(GOAL.1, square.y);
+    x_diff + y_diff
+}
+
+fn print_maze(maze: Vec<Vec<bool>>) {
+    for i in 0..maze.len() {
+        for j in 0..maze[i].len() {
+            let c = match maze[i][j] {
+                true => '#',
+                false => '.'
+            };
+            print!("{c}");
+        }
+        println!();
+    }
 }
 
 fn is_wall(x: usize, y: usize) -> bool {
     let mut val = x*x + 3*x + 2*x*y + y + y*y;
     val += PUZZLE_INPUT;
-    false
+    let bits = count_bits(val);
+    bits % 2 != 0
 }
 
-fn count_bits(val: usize) -> i32 {
-    let bits = format!("{:b}", val);
-    let mut ones = 0;
-    for c in bits.chars() {
-        if c == '1' {
-            ones += 1;
-        }
-    }
-    ones
-}
-
-fn count_bits_2(val: usize) -> i32 {
-    let mask = 1;
-    let mut ones = 0;
-    for i in 0..USIZE_SIZE {
-        if val >> i & mask  == mask {
-            ones += 1;
-        }
-    }
-    ones
-}
-
-fn count_bits_3(mut val: usize) -> usize {
+fn count_bits(mut val: usize) -> usize {
     let mask = 1;
     let mut ones = 0;
     for _ in 0..USIZE_SIZE {
@@ -73,4 +107,31 @@ fn count_bits_3(mut val: usize) -> usize {
         val = val >> 1;
     }
     ones
+}
+
+struct Square {
+    steps: usize,
+    x: usize,
+    y: usize
+}
+
+impl PartialEq for Square {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y
+    }
+}
+
+impl Eq for Square {}
+
+impl Hash for Square {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.x.hash(state);
+        self.y.hash(state);
+    }
+}
+
+impl Square {
+    fn is_goal(&self) -> bool {
+        self.x == GOAL.0 && self.y == GOAL.1
+    }
 }
