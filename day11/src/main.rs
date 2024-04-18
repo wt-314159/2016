@@ -88,16 +88,13 @@ fn a_star_search(start_state: Building) -> Option<usize> {
     queue.push(start_state, Reverse(cost));
     let mut stdout = stdout().into_raw_mode().unwrap();
 
-    println!("Step depth: ");
-    println!("");
-
     while queue.len() > 0 {
         let (building, cost) = queue.pop().unwrap();
         // if we've reached goal, return number of steps it took to get there
         if building.is_goal() {
             return Some(building.steps);
         }
-        writeln!(stdout, "{}{}", cursor::Goto(1, 9), building.steps).expect("Write error!");
+        //writeln!(stdout, "{}{}", cursor::Goto(1, 9), building.steps).expect("Write error!");
 
         // find all neighbours and calculate cost
         let next_floors = get_next_floors(building.elevator);
