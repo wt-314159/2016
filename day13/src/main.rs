@@ -13,6 +13,7 @@ const GOAL: (usize, usize) = (31, 39);
 const USIZE_SIZE: usize = mem::size_of::<usize>() * 8;
 
 fn main() {
+    // Part 1
     let start = Square { x: 1, y: 1, steps: 0 };
     if let Some(num_steps) = a_star_search(start) {
         println!("Solution found, {} steps", num_steps);
@@ -20,9 +21,68 @@ fn main() {
     else {
         println!("No solution found!");
     }
+
+    // Part 2
+    let start = Square { x: 1, y: 1, steps: 0 };
+    let num_squares_under_50 = dijkstra(start);
+    println!("Num squares under 50 steps away: {}", num_squares_under_50);
 }
 
+fn dijkstra(start: Square) -> usize {
+    let mut num_squares = 1;
+    let mut unmapped: PriorityQueue<Square, Reverse<usize>> = PriorityQueue::new();
+    let mut mapped: HashMap<Square, usize> = HashMap::new();
+    unmapped.push(start, Reverse(0));
 
+    while unmapped.len() > 0 {
+        let (square, Reverse(steps)) = unmapped.pop().unwrap();
+        let neighbour_steps = square.steps + 1;
+        if neighbour_steps > 50 {
+            mapped.insert(square, steps);
+            continue;
+        }
+
+        if !is_wall(square.x, square.y + 1) {
+            let new_square = Square { x: square.x, y: square.y + 1, steps: neighbour_steps };
+            update_mapped(&mut mapped, &mut unmapped, new_square);
+        }
+        if !is_wall(square.x + 1, square.y) {
+            let new_square = Square { x: square.x + 1, y: square.y, steps: neighbour_steps };
+            update_mapped(&mut mapped, &mut unmapped, new_square);
+        }
+        if square.y > 0 && !is_wall(square.x, square.y - 1) {
+            let new_square = Square { x: square.x, y: square.y - 1, steps: neighbour_steps };
+            update_mapped(&mut mapped, &mut unmapped, new_square);
+        }
+        if square.x > 0 && !is_wall(square.x - 1, square.y) {
+            let new_square = Square { x: square.x - 1, y: square.y, steps: neighbour_steps };
+            update_mapped(&mut mapped, &mut unmapped, new_square);
+        }
+        mapped.insert(square, steps);
+    }
+
+    mapped.iter().filter(|(_, steps)| **steps <= 50).count()
+}
+
+fn update_mapped(mapped: &mut HashMap<Square, usize>, unmapped: &mut PriorityQueue<Square, Reverse<usize>>, new_square: Square) {
+    if mapped.contains_key(&new_square) {
+        // Check if we've found a better path to the square
+        if new_square.steps < mapped[&new_square] {
+            let steps = new_square.steps;
+            mapped.insert(new_square, steps);
+        }
+    }
+    // if already in unmapped, check if our path is better
+    else if let Some(steps) = unmapped.get_priority(&new_square) {
+        if new_square.steps < steps.0 {
+            unmapped.change_priority(&new_square, Reverse(new_square.steps));
+        }
+    }
+    else {
+        let steps = new_square.steps;
+        unmapped.push(new_square, Reverse(steps));
+    }
+}
 
 fn a_star_search(start: Square) -> Option<usize> {
     let mut queue: PriorityQueue<Square, Reverse<usize>> = PriorityQueue::new();
