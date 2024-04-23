@@ -110,7 +110,7 @@ impl Value {
                     other => panic!("No register with name {}", other)
                 }
             },
-            Value::Integer(int) => panic!("Cannot set value")
+            Value::Integer(_) => panic!("Cannot set value")
         }
     }
 }

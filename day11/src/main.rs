@@ -1,6 +1,7 @@
 #[allow(unused_imports)]
 use std::{cmp::{max, min, Reverse}, collections::HashMap, fs, hash::Hash, io::{stdout, Write}};
 use priority_queue::PriorityQueue;
+#[allow(unused_imports)]
 use termion::{cursor, raw::IntoRawMode};
 // use fancy_regex::Regex;
 // use regex::Regex;
@@ -86,6 +87,7 @@ fn a_star_search(start_state: Building) -> Option<usize> {
     let mut mapped: HashMap<Building, usize> = HashMap::new();
     let cost = estimate_cost(&start_state);
     queue.push(start_state, Reverse(cost));
+    #[allow(unused_mut, unused_variables)]
     let mut stdout = stdout().into_raw_mode().unwrap();
 
     while queue.len() > 0 {

@@ -29,7 +29,6 @@ fn main() {
 }
 
 fn dijkstra(start: Square) -> usize {
-    let mut num_squares = 1;
     let mut unmapped: PriorityQueue<Square, Reverse<usize>> = PriorityQueue::new();
     let mut mapped: HashMap<Square, usize> = HashMap::new();
     unmapped.push(start, Reverse(0));
@@ -137,6 +136,7 @@ fn estimate_cost(square: &Square) -> usize {
     x_diff + y_diff
 }
 
+#[allow(dead_code)]
 fn print_maze(maze: Vec<Vec<bool>>) {
     for i in 0..maze.len() {
         for j in 0..maze[i].len() {
