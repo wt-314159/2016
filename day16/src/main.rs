@@ -1,4 +1,3 @@
-use std::ops::Index;
 #[allow(unused_imports)]
 use std::{fs, collections::HashMap, cmp::min, cmp::max};
 // use fancy_regex::Regex;
@@ -47,7 +46,6 @@ fn iterate_dragon_curve(input: &str) -> String {
 }
 
 fn generate_checksum(input: &str) -> String {
-    let length = input.len();
     let mut prev_char = '-';
     let mut odd = false;
     let mut chars: Vec<char> = Vec::new();
