@@ -2,6 +2,8 @@
 use std::{fs, collections::HashMap, cmp::min, cmp::max};
 // use fancy_regex::Regex;
 // use regex::Regex;
+// use md5::{Md5, Digest};
+// use priority_queue::PriorityQueue;
 
 fn main() {
     let input = fs::read_to_string("./src/puzzle_input.txt").expect("Failed to read input");
