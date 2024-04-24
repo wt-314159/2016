@@ -9,11 +9,53 @@ const INPUT: &str ="hhhxzeay";
 const OPEN_CHARS: [char; 5] = ['b', 'c', 'd', 'e', 'f'];
 
 fn main() {
+    // Part 1
     if let Some(directions) = a_star_search() {
         println!("Fastest path: '{}'", directions_to_string(&directions));
     }
     else {
         println!("No solution found!");
+    }
+
+    // Part 2
+    let path_length = z_star_search();
+    println!("Longest path took {path_length} steps");
+}
+
+fn z_star_search() -> usize {
+    // find the longest path that reaches the goal
+    let mut queue: PriorityQueue<Room, usize> = PriorityQueue::new();
+    let start = Room::new(0, 0, Vec::new());
+    let start_cost = start.estimate_cost();
+    queue.push(start, start_cost);
+
+    let mut longest = 0;
+    while queue.len() > 0 {
+        let (room, cost) = queue.pop().unwrap();
+        if room.is_goal() {
+            if cost > longest {
+                longest = cost;
+            }
+            // can't continue after reaching end
+            continue;
+        }
+
+        let open_doors = room.find_open_doors();
+        for dir in open_doors {
+            if let Some(new_room) = room.create_new(dir) {
+
+                update_z_queue(&mut queue, new_room);
+            }
+        }
+    }
+    longest
+}
+
+fn update_z_queue(queue: &mut PriorityQueue<Room, usize>, new_room: Room) {
+    let cost = new_room.estimate_cost();
+    // add room if not in queue
+    if let None = queue.get_priority(&new_room) {
+        queue.push(new_room, cost);
     }
 }
 
