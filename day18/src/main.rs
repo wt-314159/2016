@@ -57,6 +57,7 @@ fn num_safe_tiles(row: [bool; ROW_SIZE]) -> usize {
     row.iter().filter(|x| !**x).count()
 }
 
+#[allow(dead_code)]
 fn print_row(row: [bool; ROW_SIZE]) {
     for t in row {
         match t {
